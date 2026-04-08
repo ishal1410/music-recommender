@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Recommender</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>Music Recommender</h1>
+      <p>Recommendations based on listening habits of similar users</p>
+    </div>
+
+    <div class="content">
+      <div class="controls">
+        <label>Listening as</label>
+        <select id="user-select">
+          <option value="">-- select a user --</option>
+        </select>
+        <button id="recommend-btn">Get Recommendations</button>
+      </div>
+
+      <div id="results"></div>
+    </div>
+  </div>
+
+  <script>
+    fetch("/users")
+      .then(res => res.json())
+      .then(users => {
+        const select = document.getElementById("user-select");
+        users.forEach(user => {
+          const opt = document.createElement("option");
+          opt.value = user;
+          opt.textContent = user;
+          select.appendChild(opt);
+        });
+      });
+
+    document.getElementById("recommend-btn").addEventListener("click", () => {
+      const user = document.getElementById("user-select").value;
+      if (!user) {
+        alert("Pick a user first.");
+        return;
+      }
+
+      const results = document.getElementById("results");
+      results.innerHTML = "<p class='loading'>Finding recommendations...</p>";
+
+      fetch(`/recommend/${user}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.length === 0) {
+            results.innerHTML = "<p class='empty'>No recommendations found.</p>";
+            return;
+          }
+
+          let html = `
+            <p class="section-title">Top picks for <span>${user}</span></p>
+            <div class="table-header">
+              <span>#</span>
+              <span>Title</span>
+              <span>Genre</span>
+              <span style="text-align:right">Score</span>
+            </div>
+            <div class="cards">`;
+
+          data.forEach((item, i) => {
+            const bars = Math.round(item.popularity / 10);
+            let dots = "";
+            for (let d = 0; d < 10; d++) {
+              dots += `<span class="dot ${d < bars ? 'filled' : ''}"></span>`;
+            }
+            html += `
+              <div class="card">
+                <div class="rank">${i + 1}</div>
+                <div class="info">
+                  <div class="album-art">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                  </div>
+                  <div class="song-details">
+                    <p class="song">${item.song}</p>
+                    <p class="artist">${item.artist}</p>
+                  </div>
+                </div>
+                <div class="genre-col">
+                  <span class="genre">${item.genre}</span>
+                </div>
+                <div class="meta">
+                  <span class="score">${item.score}</span>
+                  <div class="dots">${dots}</div>
+                </div>
+              </div>`;
+          });
+
+          html += "</div>";
+          results.innerHTML = html;
+        });
+    });
+  </script>
+
+</body>
+</html>
